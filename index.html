@@ -902,6 +902,18 @@ function onKey(e) {
 window.addEventListener('keydown', onKey, true);
 document.addEventListener('keydown', onKey, true);
 
+// Dans l'iframe Shopify, tant que l'utilisateur n'a pas clique DANS le jeu, le
+// clavier appartient a la page parente : l'espace n'arrive jamais ici. Le
+// petit script cote Shopify (voir instructions) intercepte alors l'espace et
+// nous le transmet par postMessage. Seul le parent direct est accepte.
+window.addEventListener('message', (e) => {
+  if (e.source !== window.parent) return;
+  const d = e.data;
+  if (!d || d.type !== 'ss-flap') return;
+  if (lbOverlayEl.classList.contains('show')) return;
+  onFlap(null);
+});
+
 function onPoint(e) { grabFocus(); onFlap(e); }
 if (window.PointerEvent) {
   // pointerdown unifie souris, tactile et stylet : aucun double declenchement
