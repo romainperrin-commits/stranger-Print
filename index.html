@@ -148,6 +148,27 @@
   }
   .goBtn.secondary:hover, .goBtn.secondary:focus-visible { border-color: #f91919; box-shadow: 0 0 12px 1px rgba(249,25,25,0.7); outline: none; }
 
+  /* fenetre de validation "nouvelle partie" (anti mis-clic) */
+  #confirmOverlay {
+    position: fixed; inset: 0; z-index: 450;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(6,4,8,0.72);
+    opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  }
+  #confirmOverlay.show { opacity: 1; pointer-events: auto; }
+  #confirmCard {
+    width: min(300px, 84vw); text-align: center;
+    background: linear-gradient(180deg, #2a0a10, #1a0508);
+    border: 2px solid rgba(249,25,25,0.55);
+    border-radius: 16px; padding: 20px 16px 18px;
+    box-shadow: 0 0 30px rgba(249,25,25,0.35), 0 18px 40px rgba(0,0,0,0.5);
+    font-family: 'Fredoka', sans-serif;
+    transform: scale(.96); transition: transform .2s ease;
+  }
+  #confirmOverlay.show #confirmCard { transform: scale(1); }
+  #confirmTitle { color: #ffd7d7; font-weight: 700; letter-spacing: 1px; font-size: 17px; text-shadow: 0 0 8px rgba(249,25,25,.7); }
+  #confirmText { color: #e8b8b8; font-weight: 500; font-size: 13px; margin: 6px 0 16px; }
+  #confirmBtns { display: flex; gap: 10px; justify-content: center; }
   #lbOverlay {
     position: fixed; inset: 0; z-index: 400;
     display: flex; align-items: center; justify-content: center;
@@ -252,6 +273,16 @@
   <div id="gameOverButtons">
     <button class="goBtn" id="btnReplay" type="button">REJOUER</button>
     <button class="goBtn secondary" id="btnLeaderboard" type="button">CLASSEMENT</button>
+  </div>
+  <div id="confirmOverlay" role="dialog" aria-modal="true" aria-label="Nouvelle partie">
+    <div id="confirmCard">
+      <div id="confirmTitle">NOUVELLE PARTIE ?</div>
+      <div id="confirmText">Prêt pour un nouvel essai ?</div>
+      <div id="confirmBtns">
+        <button class="goBtn" id="confirmYes" type="button">LANCER</button>
+        <button class="goBtn secondary" id="confirmNo" type="button">ANNULER</button>
+      </div>
+    </div>
   </div>
   <div id="lbOverlay">
     <div id="lbCard" role="dialog" aria-modal="true" aria-label="Classement">
@@ -787,9 +818,30 @@ document.getElementById('lbForm').addEventListener('submit', async (e) => {
   }
 });
 document.getElementById('btnLeaderboard').addEventListener('click', openLeaderboard);
-document.getElementById('btnReplay').addEventListener('click', () => {
+// Nouvelle partie = validation obligatoire (anti mis-clic). Un tap / clic / espace
+// sur l'ecran de fin ne relance plus rien : seul REJOUER ouvre la fenetre, puis
+// LANCER mene a l'ecran de depart (choix de la bobine, puis tap pour jouer).
+const confirmOverlayEl = document.getElementById('confirmOverlay');
+let confirmOpenedAt = 0;
+function openConfirm() {
+  confirmOpenedAt = performance.now();
+  confirmOverlayEl.classList.add('show');
+}
+function closeConfirm() { confirmOverlayEl.classList.remove('show'); }
+function confirmNewGame() {
+  if (performance.now() - confirmOpenedAt < 350) return; // double-tap : ignore
+  closeConfirm();
   if (state === 'over') { state = 'start'; startMusic(); syncUI(); }
+}
+document.getElementById('btnReplay').addEventListener('click', () => {
+  // le bouton apparait sous le doigt d'un joueur qui vient de mourir : on
+  // ignore les clics dans la demi-seconde qui suit la fin de partie
+  if (state !== 'over' || performance.now() - overAt < 500) return;
+  openConfirm();
 });
+document.getElementById('confirmYes').addEventListener('click', confirmNewGame);
+document.getElementById('confirmNo').addEventListener('click', closeConfirm);
+confirmOverlayEl.addEventListener('click', (e) => { if (e.target === confirmOverlayEl) closeConfirm(); });
 function selectColor(c) {
   setCharColor(c);
   if (state === 'select') state = 'start';
@@ -814,6 +866,7 @@ syncUI();
 function uiOwnsInput(t) {
   if (!t || !t.closest) return false;
   if (t.closest('#lbOverlay') && lbOverlayEl.classList.contains('show')) return true;
+  if (t.closest('#confirmOverlay') && confirmOverlayEl.classList.contains('show')) return true;
   if (state === 'select' && t.closest('.spoolCard')) return true;
   if (state === 'over' && t.closest('#bonusPanel, #copyCodeBtn, #gameOverButtons')) return true;
   if (t.closest('#colorRow') && state === 'start') return true;
@@ -842,7 +895,7 @@ function onFlap(e) {
   if ((state === 'start' || state === 'play') && music.paused && !audioMuted) startMusic();
   if (state === 'start') { state = 'play'; resetGame(); startMusic(); doFlap(); syncUI(); }
   else if (state === 'play') { doFlap(); }
-  else if (state === 'over') { state = 'start'; syncUI(); }
+  // etat 'over' : aucun relancement par tap/espace (voir fenetre de validation)
 }
 function doFlap() {
   bird.vy = FLAP;
@@ -893,9 +946,16 @@ window.addEventListener('pagehide', stopMusic);
 // est litteralement le meme objet. On n'utilise pas timeStamp, que Firefox et
 // Safari arrondissent a la milliseconde : deux appuis rapides seraient avales.
 let lastKeyEvent = null;
+let overAt = 0;
 function onKey(e) {
   if (e === lastKeyEvent) return;
   lastKeyEvent = e;
+  if (confirmOverlayEl.classList.contains('show')) {
+    if (e.key === 'Escape') { e.preventDefault(); closeConfirm(); }
+    else if (e.key === 'Enter') { e.preventDefault(); confirmNewGame(); }
+    else if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); }
+    return;
+  }
   if (!(e.code === 'Space' || e.key === ' ' || e.keyCode === 32 || e.code === 'ArrowUp')) return;
   onFlap(e);
 }
@@ -927,7 +987,7 @@ if (window.PointerEvent) {
 // apres un clic sur un bouton/une carte, on rend le focus : espace doit lancer le jeu, pas re-cliquer
 document.addEventListener('click', (e) => {
   const b = e.target && e.target.closest && e.target.closest('button, .spoolCard, #bonusPanel');
-  if (b && !b.closest('#lbOverlay')) setTimeout(() => { try { b.blur(); } catch (_) {} }, 0);
+  if (b && !b.closest('#lbOverlay') && !b.closest('#confirmOverlay')) setTimeout(() => { try { b.blur(); } catch (_) {} }, 0);
 });
 // pas de zoom double-tap, pas de menu au appui long
 window.addEventListener('dblclick', (e) => { if (e.cancelable) e.preventDefault(); });
@@ -1104,6 +1164,8 @@ function handleHit() {
 function gameOver() {
   if (state !== 'play') return;
   state = 'over';
+  overAt = performance.now();
+  closeConfirm();
   stopMusic();
   lastScore = score;
   lastFrame = frame;
