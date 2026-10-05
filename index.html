@@ -934,6 +934,7 @@ function shuffledCharacterOrder() {
   return arr;
 }
 function resetGame() {
+  refreshPipeBitmaps();
   bird.x = W/2; bird.y = H/2; bird.vy = 0; bird.rot = 0;
   flapping = false; flapAnimT = 0; wingAngle = 0;
   pipes = [];
@@ -1215,6 +1216,21 @@ function drawPipe(p) {
 // marche partout), puis on decoupe dans ce bitmap : un drawImage canvas ->
 // canvas avec sous-rectangle est identique sur tous les navigateurs.
 const pipeBitmaps = new Map();
+// Un bitmap vide (SVG pas encore decode, ou memoire canvas purgee par iOS /
+// Android apres une mise en veille ou un game over) ferait disparaitre les
+// tuyaux sans erreur : on verifie qu'il contient bien des pixels, sinon on
+// ne le garde pas en cache et on retombe sur l'image directe.
+function bitmapHasPixels(c) {
+  try {
+    const t = document.createElement('canvas');
+    t.width = 40; t.height = 40;
+    const tc = t.getContext('2d');
+    tc.drawImage(c, 0, 0, 40, 40);
+    const d = tc.getImageData(0, 0, 40, 40).data;
+    for (let i = 3; i < d.length; i += 4) if (d[i] > 0) return true;
+    return false;
+  } catch (_) { return true; } // lecture interdite : on suppose valide
+}
 function pipeBitmap(img) {
   if (!img.complete || !img.naturalWidth) return null;
   let c = pipeBitmaps.get(img);
@@ -1222,10 +1238,15 @@ function pipeBitmap(img) {
     c = document.createElement('canvas');
     c.width = 1000; c.height = 1000; // taille du viewBox des SVG de tuyau
     c.getContext('2d').drawImage(img, 0, 0, 1000, 1000);
+    if (!bitmapHasPixels(c)) return img; // repli : dessin direct, re-essai a la frame suivante
     pipeBitmaps.set(img, c);
   }
   return c;
 }
+// re-rasterise a chaque nouvelle partie et au retour au premier plan
+function refreshPipeBitmaps() { pipeBitmaps.clear(); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshPipeBitmaps(); });
+window.addEventListener('pageshow', refreshPipeBitmaps);
 function drawPipeSeg(x, y, w, h, isTop) {
   if (h <= 0) return;
   const img = pipeBitmap(isTop ? tuyauHautImg : tuyauBasImg);
