@@ -42,6 +42,7 @@
      dans un seul encart sur le canvas (voir drawOverScreen) ; #bonusPanel
      n'est plus que le bouton cliquable, incruste au bas de ce meme encart */
   #bonusPanel {
+    cursor: pointer;
     position: absolute; left: 50%; bottom: 47%;
     transform: translate(-50%, 8px) scale(0.96);
     display: inline-block; background: #f6a118; color: #281b44;
@@ -169,6 +170,40 @@
   #confirmTitle { color: #ffd7d7; font-weight: 700; letter-spacing: 1px; font-size: 17px; text-shadow: 0 0 8px rgba(249,25,25,.7); }
   #confirmText { color: #e8b8b8; font-weight: 500; font-size: 13px; margin: 6px 0 16px; }
   #confirmBtns { display: flex; gap: 10px; justify-content: center; }
+  /* pop-up "J'EN PROFITE" : meme habillage que la fenetre de validation */
+  #promoOverlay {
+    position: fixed; inset: 0; z-index: 450;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(6,4,8,0.72);
+    opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  }
+  #promoOverlay.show { opacity: 1; pointer-events: auto; }
+  #promoCard {
+    position: relative; width: min(310px, 86vw); text-align: center;
+    background: linear-gradient(180deg, #2a0a10, #1a0508);
+    border: 2px solid rgba(249,25,25,0.55);
+    border-radius: 16px; padding: 24px 18px 20px;
+    box-shadow: 0 0 30px rgba(249,25,25,0.35), 0 18px 40px rgba(0,0,0,0.5);
+    font-family: 'Fredoka', sans-serif;
+    transform: scale(.96); transition: transform .2s ease;
+  }
+  #promoOverlay.show #promoCard { transform: scale(1); }
+  #promoClose {
+    position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; padding: 0;
+    border: 0; border-radius: 8px; background: rgba(255,255,255,0.08); color: #ffd7d7;
+    cursor: pointer; font-size: 16px; line-height: 1; font-family: 'Fredoka', sans-serif; font-weight: 700;
+  }
+  #promoTitle { color: #ffd7d7; font-weight: 700; letter-spacing: 1px; font-size: 16px; text-shadow: 0 0 8px rgba(249,25,25,.7); }
+  #promoCode { color: #f6a118; font-weight: 700; font-size: 22px; letter-spacing: 1px; margin: 6px 0 8px; }
+  #promoText { color: #ffe9e9; font-weight: 500; font-size: 14px; line-height: 1.35; margin: 0 0 18px; }
+  #promoGo {
+    display: inline-block; background: #f6a118; color: #281b44;
+    font-weight: 700; font-size: clamp(11px,3.2vw,13px); letter-spacing: .3px;
+    padding: 10px 18px; border-radius: 999px; text-decoration: none;
+    box-shadow: 0 4px 0 #cc7e10; white-space: nowrap;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  #promoGo:active { transform: translateY(3px); box-shadow: 0 1px 0 #cc7e10; }
   #lbOverlay {
     position: fixed; inset: 0; z-index: 400;
     display: flex; align-items: center; justify-content: center;
@@ -253,7 +288,7 @@
     </svg>
   </button>
   <div id="logoBar"><img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyBpZD0iQ2FscXVlXzIiIGRhdGEtbmFtZT0iQ2FscXVlIDIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDU4Mi4yMiA4NS4yNyI+CiAgPGRlZnM+CiAgICA8c3R5bGU+CiAgICAgIC5jbHMtMSB7CiAgICAgICAgZmlsbC1ydWxlOiBldmVub2RkOwogICAgICB9CgogICAgICAuY2xzLTEsIC5jbHMtMiB7CiAgICAgICAgZmlsbDogI2ZmZjsKICAgICAgfQogICAgPC9zdHlsZT4KICA8L2RlZnM+CiAgPGcgaWQ9IkNhbHF1ZV8xLTIiIGRhdGEtbmFtZT0iQ2FscXVlIDEiPgogICAgPGc+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMiIgZD0iTTU3Ni44OCw2LjY3Yy00LjE2LTMuNjQtOS42NC01LjQ4LTE2LjM5LTUuNDhoLTgwLjIyYy0zLjM1LDAtNi4zNSwyLjcxLTYuNjksNi4wNi0yLjYsMjQuMDEtNi44MSw0OC4wMi04Ljk1LDcxLjk3LS4yOSwzLjM1LDIuMTksNi4wNiw1LjYsNi4wNmg4MC4zNGM2LjIzLDAsMTEuODMtMS43OSwxNi45MS01LjMxLDUuMDgtMy41Miw3Ljg1LTcuOTYsOC40OC0xMy4yNywxLjQ0LTEyLjQxLDMuMjMtMjQuODIsNC45MS0zNy4yMy40LTMuMTIuODctNi4yMywxLjIxLTkuMzUuNjktNS4zMS0xLjA0LTkuNzUtNS4xOS0xMy40NVpNNTU3LjMxLDI5LjIzYy0xLjI3LDkuMjktMi42LDE4LjU4LTMuNzUsMjcuODgtLjM1LDIuNi0xLjksNC44NS00LjczLDYuNjktMi44MywxLjktNi4xOCwyLjg5LTkuOTgsMi44OWgtNDkuNDZjMS43OS0xNS42NCw0LjIxLTMxLjI4LDYuMTgtNDYuOTJoNDkuNDZjMy41MiwwLDYuNTIuOTgsOS4wNiwyLjk0LDIuNTQsMS45LDMuNjQsNC4xLDMuMjksNi41MmgtLjA2Wk00NTkuNzcsNi41NWMtNC40NC0zLjU4LTkuNzUtNS4zNy0xNS45OS01LjM3aC01MC4xNWMtNi45OCwwLTEyLjcsMS43My0xNy4xNCw1LjI1LTQuMzksMy40Ni02Ljk4LDguMDItNy42OCwxMy41MS0uMTIsMS4wNC0uMjksMi4wOC0uNCwzLjEyLS40LDMuMzUsMS45LDYuMDYsNS4yNSw2LjA2aDExLjMxYzIuNDIsMCw0LjY3LTEuNSw2LTMuNjQuNjktMS4xLDEuNjctMi4wOCwyLjg5LTIuOTQsMi40Mi0xLjc5LDUuNTQtMi42LDkuMjktMi42aDMwLjY1YzIuNiwwLDQuNTYuNTgsNS44OSwxLjczLDEuMzksMS4xNSwxLjg1LDMuMTcsMS40NCw2LjA2LS4zNSwyLjcxLTEuNDQsNC43My0zLjI5LDYuMDYtMS40NCwxLjEtMy40MSwxLjYyLTUuODMsMS42MmgtMTUuNTNjLTMuMzUsMC02LjQ2LDIuNzEtNi45Myw2LjA2LS4xNywxLjMzLS4zNSwyLjcxLS41OCw0LjA0LS40NiwzLjQxLDEuOSw2LjEyLDUuMzEsNi4wNiw1LjI1LDAsMTAuNS0uMTIsMTUuNzYtLjE3aDEuNDRjMS44NSwwLDMuMzUuNjMsNC4zOSwxLjc5LDEuMDQsMS4yMSwxLjQ0LDMsMS4xLDUuNDMtLjM1LDIuNzctMS4zOSw0Ljc5LTMuMDYsNi0xLjczLDEuMjEtMy44MSwxLjc5LTYuMjksMS43OWgtMzAuMTNjLTMuNjQsMC02LjU4LS45Mi04Ljc3LTIuNzEtMS4xNS0uOTItMS45Ni0xLjk2LTIuNDItMy4xMi0uODEtMi4xNC0yLjcxLTMuNTItNS4wOC0zLjUyaC0xMS4zN2MtMy4zNSwwLTYuNDEsMi43MS02LjgxLDYuMDYtLjEyLDEuMS0uMjksMi4xOS0uNCwzLjI5LS42Myw1LjM3Ljk4LDkuODcsNC43MywxMy40NSwzLjc1LDMuNTgsOS4xOCw1LjM3LDE2LjE2LDUuMzdoNTAuMTVjNi4yMywwLDExLjg5LTEuNzksMTYuOTctNS4zNyw1LjA4LTMuNTgsNy45Ni04LjAyLDguNTQtMTMuNDUuMzUtMy4xMi43NS02LjIzLDEuMTUtOS4zNS40LTMuMTIuNC01LjYsMC03LjQ1LS41OC0yLjQ4LTEuOTYtNC42Mi00LjE2LTYuMjksMi4zNy0uOTIsNC4yNy0yLjgzLDUuNzEtNS43MSwxLjEtMi4yNSwxLjg1LTUuMDgsMi4zMS04LjM3LjQtMy4wNi44MS02LjE4LDEuMjEtOS4yMy42OS01LjM3LTEuMjEtOS44Ny01LjYtMTMuNDVoLS4wNiwwWiIvPgogICAgICA8cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik02OS45Niw3Ni42N2gtNC41NmMtMi4zMSwwLTQuMjctMS4yNy01LjA4LTMuMzUtMi4wMi00Ljk2LTMuOTItOS44Ny01LjgzLTE0LjgzaC0xMi42NGMtMy4yMywwLTUuMzctMi40Mi01LjM3LTUuMzFzLjI5LTIuMzEuOTgtMy40MWMxLjI3LTIuMTQsMy41OC0zLjQ2LDUuOTQtMy40Nmg2LjQ2Yy0yLjA4LTUuNi00LjE2LTExLjI1LTYuMjMtMTYuODUtOS40MSwxNC42Ni0xOC45MywyOS4yNi0yNy44OCw0My44Ni0xLjI3LDIuMDgtMy41MiwzLjM1LTUuODMsMy4zNXMtMy4wNiwwLTQuNTYtLjA2Yy00LjQ0LS4wNi02Ljg3LTQuNzktNC4zOS04Ljc3QzE0LjE1LDQ2LjM3LDI4LjUyLDI0LjksNDEuNCwzLjM4YzIuNjUtNC41LDkuMDYtNC41LDEwLjg1LDAsOC42LDIxLjUzLDE1LjcsNDMsMjQuMDcsNjQuNTMsMS41Niw0LjA0LTEuODUsOC43Ny02LjM1LDguNzdoMFoiLz4KICAgICAgPHBhdGggY2xhc3M9ImNscy0xIiBkPSJNODguMDksMTAuMzZoNTMuNTZjMy4zNSwwLDUuNzcsMi43MSw1LjM3LDYuMDYtLjE3LDEuNDQtLjM1LDIuODktLjUyLDQuMjctLjQsMy4zNS0zLjUyLDYuMDYtNi44Nyw2LjA2aC0xOC41M2MtMS45LDE0LjQzLTQuMDQsMjguOC01LjY2LDQzLjIzLS4zNSwzLjM1LTMuMzUsNi4wNi02LjY5LDYuMDZoLTQuMjdjLTMuMzUsMC01LjgzLTIuNzEtNS40My02LjA2LDEuNTYtMTQuNDMsMy42OS0yOC44LDUuNjYtNDMuMjNoLTE4LjUzYy0zLjM1LDAtNS43MS0yLjcxLTUuMjUtNi4wNi4xNy0xLjQ0LjM1LTIuODkuNTItNC4yNy40LTMuMzUsMy40Ni02LjA2LDYuODEtNi4wNmgtLjE3LDBaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTIwNS44OCwyMC4wNmMtNS42LTYuNDYtMTIuOTktOS43LTIyLjA1LTkuN3MtMTcuMiwzLjIzLTI0LjM2LDkuNjRjLTcuMjEsNi40MS0xMS40OSwxNC4xNC0xMi43NiwyMy4yLTEuMjcsOS4xMi45MiwxNi44NSw2LjU4LDIzLjI2LDUuNjYsNi40MSwxMy4xNiw5LjY0LDIyLjI4LDkuNjRzMTcuMDgtMy4xNywyNC4xOC05LjU4YzcuMjEtNi40MSwxMS40My0xNC4yLDEyLjctMjMuMzIsMS4yNy05LjA2LS45Mi0xNi44LTYuNTItMjMuMmgwbC0uMDYuMDZoMFpNMTk1Ljk2LDQzLjI2Yy0uNjMsNC41Ni0yLjc3LDguNDMtNi40MSwxMS42LTMuNjQsMy4yMy03LjY4LDQuNzktMTIuMTgsNC43OXMtOC4yLTEuNjItMTAuOTctNC43OWMtMi43Ny0zLjE3LTMuODctNy4xLTMuMjMtMTEuNi41OC00LjUsMi43Ny04LjM3LDYuNDEtMTEuNTQsMy42NC0zLjIzLDcuNzMtNC44NSwxMi4yNC00Ljg1czguMTQsMS42MiwxMC45MSw0Ljg1YzIuODMsMy4yMywzLjkyLDcuMSwzLjI5LDExLjU0aC0uMDZaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTIyMi42Miw3Ni4xaDQuMjdjMy4zNSwwLDYuMzUtMi43MSw2LjY5LTYuMDYsMS4yNy0xMS42NiwyLjg5LTIzLjMyLDQuNS0zNS4wM2wxMi43Niw2Ljg3YzEuNjIuODcsMy41OC44Nyw1LjQzLDAsNC45MS0yLjMxLDkuNzUtNC41NiwxNC42Ni02Ljg3LTEuNjIsMTEuNjYtMy4yMywyMy4zMi00LjUsMzUuMDMtLjM1LDMuMzUsMi4wOCw2LjA2LDUuNDgsNi4wNmg0LjI3YzMuMzUsMCw2LjM1LTIuNzEsNi42OS02LjA2LDEuOTYtMTcuODMsNC43OS0zNS43Myw2LjkzLTUzLjU2LjQtMy4zNS0yLjAyLTYuMDYtNS4zNy02LjA2aC00LjI3Yy0zLjM1LDAtNi4zNSwyLjcxLTYuODEsNi4wNi0uMDYuNjktLjE3LDEuNDQtLjI5LDIuMTQtNS44MywyLjc3LTExLjY2LDUuNDgtMTcuNDksOC4yLTUuMTQtMi43Ny0xMC4yMi01LjQ4LTE1LjM1LTguMi4wNi0uNjkuMTctMS40NC4yOS0yLjE0LjQtMy4zNS0yLjAyLTYuMDYtNS4zNy02LjA2aC00LjI3Yy0zLjM1LDAtNi40MSwyLjcxLTYuODEsNi4wNi0yLjE5LDE3LjgzLTUuMDIsMzUuNzMtNi45Myw1My41Ni0uMzUsMy4zNSwyLjA4LDYuMDYsNS40OCw2LjA2aDBaIi8+CiAgICAgIDxwYXRoIGNsYXNzPSJjbHMtMSIgZD0iTTM0NS4xNSwzNS4xMmgtNDIuMTljLTMuMzUsMC02LjQ2LDIuNzEtNi45Myw2LjA2LS4xNywxLjQ0LS40LDIuODktLjU4LDQuMjctLjQ2LDMuMzUsMS45LDYuMDYsNS4yNSw2LjA2aDQyLjE5YzMuMzUsMCw2LjQxLTIuNzEsNi44Ny02LjA2LjE3LTEuMzkuNC0yLjgzLjU4LTQuMjcuNDYtMy4zNS0xLjg1LTYuMDYtNS4yNS02LjA2aC4wNlpNMzQ4LjM4LDEwLjM2aC00Mi4xOWMtMy4zNSwwLTYuNDEsMi43MS02LjgxLDYuMDYtLjE3LDEuNDQtLjM1LDIuODMtLjUyLDQuMjctLjQ2LDMuMzUsMS45LDYuMDYsNS4yNSw2LjA2aDQyLjI1YzMuMzUsMCw2LjQ2LTIuNzEsNi44Ny02LjA2LjE3LTEuNDQuMzUtMi44My41Mi00LjI3LjQtMy4zNS0yLjAyLTYuMDYtNS4zNy02LjA2aDBaTTM0MS45Miw1OS43MWgtNDIuMjVjLTMuMzUsMC02LjQxLDIuNzEtNi44MSw2LjA2LS4xNywxLjQ0LS4zNSwyLjgzLS41Miw0LjI3LS4zNSwzLjM1LDIuMTQsNi4wNiw1LjQ4LDYuMDZoNDIuMjVjMy4zNSwwLDYuMzUtMi43MSw2LjY5LTYuMDYuMTctMS40NC4yOS0yLjgzLjQ2LTQuMjcuNC0zLjM1LTEuOTYtNi4wNi01LjMxLTYuMDZoMFoiLz4KICAgIDwvZz4KICA8L2c+Cjwvc3ZnPg==" alt="ATOME3D"></div>
-  <a id="bonusPanel" target="_blank" rel="noopener">J'EN PROFITE</a>
+  <a id="bonusPanel" role="button" tabindex="0">J'EN PROFITE</a>
   <button id="copyCodeBtn" type="button">COPIER LE CODE</button>
   <div id="selectScreen">
     <div class="prompt">CHOISIS TA BOBINE</div>
@@ -282,6 +317,15 @@
         <button class="goBtn" id="confirmYes" type="button">LANCER</button>
         <button class="goBtn secondary" id="confirmNo" type="button">ANNULER</button>
       </div>
+    </div>
+  </div>
+  <div id="promoOverlay" role="dialog" aria-modal="true" aria-label="Code promo">
+    <div id="promoCard">
+      <button id="promoClose" type="button" aria-label="Fermer">&#10005;</button>
+      <div id="promoTitle">CODE PROMO</div>
+      <div id="promoCode"></div>
+      <p id="promoText">Le code est dans ton panier, clique ici pour en profiter !</p>
+      <a id="promoGo" target="_blank" rel="noopener">CONTINUER VERS ATOME3D.COM</a>
     </div>
   </div>
   <div id="lbOverlay">
@@ -332,7 +376,20 @@ const TITLE_SRC = "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGl
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const bonusPanel = document.getElementById('bonusPanel');
-bonusPanel.href = 'https://www.atome3d.com/discount/' + encodeURIComponent(BONUS_CODE);
+const promoOverlayEl = document.getElementById('promoOverlay');
+const promoGo = document.getElementById('promoGo');
+promoGo.href = 'https://www.atome3d.com/discount/' + encodeURIComponent(BONUS_CODE);
+document.getElementById('promoCode').textContent = BONUS_CODE;
+let promoOpenedAt = 0;
+function openPromo() { promoOpenedAt = performance.now(); promoOverlayEl.classList.add('show'); }
+function closePromo() { promoOverlayEl.classList.remove('show'); }
+// J'EN PROFITE n'emmene plus directement sur le site : il ouvre ce pop-up, dont
+// le bouton mene au lien de remise (le code s'applique a l'arrivee sur le site).
+bonusPanel.addEventListener('click', (e) => { e.preventDefault(); openPromo(); });
+bonusPanel.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPromo(); } });
+document.getElementById('promoClose').addEventListener('click', closePromo);
+promoOverlayEl.addEventListener('click', (e) => { if (e.target === promoOverlayEl) closePromo(); });
+promoGo.addEventListener('click', () => { setTimeout(closePromo, 150); });
 const copyCodeBtn = document.getElementById('copyCodeBtn');
 const COPY_BTN_DEFAULT_LABEL = copyCodeBtn.textContent;
 let copyBtnResetT = null;
@@ -867,6 +924,7 @@ function uiOwnsInput(t) {
   if (!t || !t.closest) return false;
   if (t.closest('#lbOverlay') && lbOverlayEl.classList.contains('show')) return true;
   if (t.closest('#confirmOverlay') && confirmOverlayEl.classList.contains('show')) return true;
+  if (t.closest('#promoOverlay') && promoOverlayEl.classList.contains('show')) return true;
   if (state === 'select' && t.closest('.spoolCard')) return true;
   if (state === 'over' && t.closest('#bonusPanel, #copyCodeBtn, #gameOverButtons')) return true;
   if (t.closest('#colorRow') && state === 'start') return true;
@@ -950,6 +1008,11 @@ let overAt = 0;
 function onKey(e) {
   if (e === lastKeyEvent) return;
   lastKeyEvent = e;
+  if (promoOverlayEl.classList.contains('show')) {
+    if (e.key === 'Escape') { e.preventDefault(); closePromo(); }
+    else if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); }
+    return;
+  }
   if (confirmOverlayEl.classList.contains('show')) {
     if (e.key === 'Escape') { e.preventDefault(); closeConfirm(); }
     else if (e.key === 'Enter') { e.preventDefault(); confirmNewGame(); }
@@ -987,7 +1050,7 @@ if (window.PointerEvent) {
 // apres un clic sur un bouton/une carte, on rend le focus : espace doit lancer le jeu, pas re-cliquer
 document.addEventListener('click', (e) => {
   const b = e.target && e.target.closest && e.target.closest('button, .spoolCard, #bonusPanel');
-  if (b && !b.closest('#lbOverlay') && !b.closest('#confirmOverlay')) setTimeout(() => { try { b.blur(); } catch (_) {} }, 0);
+  if (b && !b.closest('#lbOverlay') && !b.closest('#confirmOverlay') && !b.closest('#promoOverlay')) setTimeout(() => { try { b.blur(); } catch (_) {} }, 0);
 });
 // pas de zoom double-tap, pas de menu au appui long
 window.addEventListener('dblclick', (e) => { if (e.cancelable) e.preventDefault(); });
@@ -1166,6 +1229,7 @@ function gameOver() {
   state = 'over';
   overAt = performance.now();
   closeConfirm();
+  closePromo();
   stopMusic();
   lastScore = score;
   lastFrame = frame;
