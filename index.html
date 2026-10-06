@@ -461,9 +461,16 @@ let H = H_BASE;
 let W = 288;    // dynamique : recalcule pour matcher le ratio reel de l'ecran, pour que le monde s'etende en largeur et remplisse tout l'ecran sans recadrage ni bandes noires
 
 let needsDraw = true; // vrai = redessiner a la prochaine image (voir loop)
+let sizeValid = false, lastVW = 0, lastVH = 0;
 function applySize() {
   const vw = window.innerWidth || document.documentElement.clientWidth;
   const vh = window.innerHeight || document.documentElement.clientHeight;
+  // Iframe Shopify pas encore dimensionnee (0x0 au chargement) : on garde les
+  // dimensions actuelles et on reessaie au prochain resize / controle periodique.
+  // Sans ce garde-fou, W devenait NaN/0 et l'ecran restait noir.
+  if (!(vw > 0) || !(vh > 0)) { sizeValid = false; return; }
+  sizeValid = true;
+  lastVW = vw; lastVH = vh;
   const portraitPhone = vw <= 820 && vh > vw;
   H = portraitPhone ? Math.max(H_BASE, Math.round(vh / MOBILE_MAX_SCALE)) : H_BASE;
   W = Math.max(200, Math.round(H * (vw / vh)));
@@ -527,7 +534,7 @@ const _nativeDrawImage = ctx.drawImage.bind(ctx);
 ctx.drawImage = function (img, a, b, c, d) {
   if (arguments.length === 5 && img && img._vbW && img.complete) {
     const r = svgLevel(img, Math.abs(c), Math.abs(d));
-    if (r) return _nativeDrawImage(r, a, b, c, d);
+    if (r && r.width > 0 && r.height > 0) return _nativeDrawImage(r, a, b, c, d);
   }
   return _nativeDrawImage.apply(null, arguments);
 };
@@ -1313,7 +1320,7 @@ function buildSky() {
 }
 function drawBackground() {
   if (!skyCache || skyCache.width !== W || skyCache.height !== H) skyCache = buildSky();
-  ctx.drawImage(skyCache, 0, 0);
+  if (skyCache.width > 0 && skyCache.height > 0) ctx.drawImage(skyCache, 0, 0);
 
   // brume : blobs sombres qui derivent
   ctx.fillStyle = PAL.cloud;
@@ -1666,18 +1673,33 @@ function draw() {
   else if (state === 'play') drawPlayScreen();
   else drawOverScreen();
 }
+let loopErrLogged = false;
+let pollCount = 0;
 function loop(t) {
-  if (!lastT) lastT = t;
-  let dt = t - lastT;
-  lastT = t;
-  if (!(dt > 0) || dt > 250) dt = STEP_MS; // onglet endormi / pause debogueur : pas de rattrapage
-  acc += dt;
-  let steps = 0;
-  while (acc >= STEP_MS - 0.8 && steps < MAX_CATCHUP) { update(); acc -= STEP_MS; steps++; }
-  if (steps === MAX_CATCHUP) acc = 0; // machine trop lente : on abandonne le retard
-  if (acc < 0) acc = 0;
-  if (steps > 0 || needsDraw) { needsDraw = false; draw(); }
+  // on replanifie EN PREMIER : une exception ponctuelle ne doit jamais tuer la boucle
   requestAnimationFrame(loop);
+  try {
+    // controle periodique de la taille (iframe redimensionnee sans evenement resize)
+    if (++pollCount >= 30) {
+      pollCount = 0;
+      const vw = window.innerWidth, vh = window.innerHeight;
+      if (vw > 0 && vh > 0 && (!sizeValid || vw !== lastVW || vh !== lastVH)) scheduleResize();
+    }
+    if (!sizeValid) return;
+    if (!lastT) lastT = t;
+    let dt = t - lastT;
+    lastT = t;
+    if (!(dt > 0) || dt > 250) dt = STEP_MS; // onglet endormi / pause debogueur : pas de rattrapage
+    acc += dt;
+    let steps = 0;
+    while (acc >= STEP_MS - 0.8 && steps < MAX_CATCHUP) { update(); acc -= STEP_MS; steps++; }
+    if (steps === MAX_CATCHUP) acc = 0; // machine trop lente : on abandonne le retard
+    if (acc < 0) acc = 0;
+    if (steps > 0 || needsDraw) { needsDraw = false; draw(); }
+  } catch (err) {
+    needsDraw = true; // on retentera a l'image suivante
+    if (!loopErrLogged) { loopErrLogged = true; try { console.error('[loop]', err); } catch (_) {} }
+  }
 }
 document.addEventListener('visibilitychange', () => { lastT = 0; acc = 0; needsDraw = true; });
 requestAnimationFrame(loop);
