@@ -715,13 +715,19 @@ function nextSignDef() {
   lastSignId = id;
   return SIGN_DEFS.find(d => d.id === id);
 }
-function spawnSign() {
+function spawnSign(first) {
   const def = nextSignDef();
-  signs.push({ def, x: W + 8 });
+  if (first) {
+    // premier panneau : lance au debut de la partie, deja engage sur le bord
+    // droit (30% visible) et il defile : au 1er point il est bien entre
+    const dw = def.vw * signScale();
+    signs.push({ def, x: W - 0.3 * dw });
+    signTravel = 0.3 * dw + 8;   // espacement avec le suivant identique aux autres
+  } else signs.push({ def, x: W + 8 });
 }
 function updateSigns(mul) {
-  if (state === 'play' && score >= 1) {
-    if (!signSpawned) { signSpawned = true; signTravel = 0; spawnSign(); }
+  if (state === 'play') {
+    if (!signSpawned) { signSpawned = true; signTravel = 0; spawnSign(true); }
     else {
       signTravel += SIGN_SPEED * mul;
       if (signTravel >= signGap()) { signTravel = 0; spawnSign(); }
